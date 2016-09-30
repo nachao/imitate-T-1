@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>Document</title>
+		<link rel="stylesheet" type="text/css" href="./bootstrap.css" />
+		<script type="text/javascript" src="./vue.js"></script>
+		<script type="text/javascript" src="./bootstrap.js"></script>
+	</head>
+	<body>
+
+		<div class="container">
+			<h3 v-text="'total: ' + total"></h3>
+		</div>
+
+		<script type="text/javascript">
+
+			new Vue({
+				el: 'body',
+				data: {
+					total: 0,
+					income: 0,
+					available: 0,
+					days: 0,
+
+					logs: [],
+					names: []
+				},
+				methods: {
+
+					buy: function () {
+
+					}
+				}
+			});
+
+		</script>
+	</body>
+</html>
