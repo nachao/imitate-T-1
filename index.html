@@ -25,13 +25,16 @@
 				color: #eee;
 				cursor: pointer;
 			}
+			.length-of-days i:hover {
+				background: #888;
+			}
 			.length-of-days i.act {
 				background: orange;
 			}
 
 			.form-control {
 				display: initial;
-				width: initial;
+				width: 100px;
 				height: initial;
 				border-radius: 0px;
 				padding: 2px 10px;
@@ -52,17 +55,13 @@
 					<span v-text="income"></span>
 				</li>
 				<li>
-					<span>Available: </span>
-					<span v-text="available"></span>
-				</li>
-				<li>
 					<span>Days: </span>
 					<span v-text="days"></span>
 				</li>
 			</ul>
 			<hr>
 
-			<div v-for="market in markets" class="alert alert-danger" role="alert">
+			<div class="alert alert-danger" role="alert">
 				<ul class="list-inline">
 					<li>
 						<b v-text="market.code"></b>
@@ -71,60 +70,87 @@
 						<span v-text="market.name"></span>
 					</li>
 					<li>
-						<i v-text="market.value"></i>
+						<i v-text="market.price"></i>
 					</li>
-					<li class="pull-right">
-						<!-- <a href="javascript:;" @click="setPass(market.code)" >Spend</a>&nbsp;| -->
-						<a href="javascript:;" @click="setTradable('Buy', market.code)" >Buy</a>
-						<a href="javascript:;" @click="setTradable('Sold', market.code)" >Sold</a>
-					</li>
+					<!-- <li class="pull-right">
+						<a href="javascript:;">Buy</a>
+						<a href="javascript:;">Sold</a>
+					</li> -->
 				</ul>
 			</div>
-			<hr>
+			<hr />
 
 			<div>
+				<h3>Spend</h3>
 				<div class="length-of-days" >
-					<i v-for="key in 10" v-text="key+1" v-bind:class="{ 'act' :key < spend }" @mouseenter="spend = key+1" ></i>
+					<i v-for="key in 10" 
+						v-text="key+1"
+						v-bind:class="{ 'act' :key < spend }" 
+						@click="spend = key+1" >
+					</i>
 				</div>
 				<form @submit.prevent="setToday">
-					<input type="text" value="" v-model="price" id="currentValue" placeholder="price" />
-					<input type="submit" value="Submit" />
-					<input type="button" value="Cancel" />
+					<input type="text" v-model="price"  placeholder="price" class="form-control" />
+					<input type="button" value="+" @click="setAdd" />
+					<input type="button" value="-" @click="setSub" />
+					<input type="submit" value="Update" />
+					<!-- <input type="button" value="Cancel" /> -->
 				</form>
 			</div>
+			<hr/>
 
-			<template v-if="selected">
+			<div>
+				<h3>Buy/Sold</h3>
+				<form class="form" @submit.prevent="setBuy">
+					<div class="form-group" v-bind:class="{ 'has-error': false, 'has-success': false }">
+						<input v-model="number" placeholder="number" class="form-control" />
+						<input type="submit" value="Buy" />
+						<!-- <input type="button" value="Sold" @click="setSold" /> -->
+						<!-- <input type="button" value="Cancel" @click="tradable=false" /> -->
+					</div>
+					<ul class="list-inline">
+						<li>
+							<span>name: </span>
+							<strong v-text="market.name"></strong>
+						</li>
+						<li>
+							<span>price: </span>
+							<strong v-text="market.price"></strong>
+						</li>
+						<!-- <li>
+							<span>hold: </span>
+							<strong v-text="market.hold"></strong>
+						</li>
+						<li>
+							<span>money: </span>
+							<strong v-text="market.hold * market.price"></strong>
+						</li> -->
+					</ul>
+				</form>
+			</div>
+			<hr/>
 
-				<div v-if="selected.type == 'Buy' || selected.type == 'Sold'">
-					<h3 v-text="tradable.type"></h3>
-					<form class="form" @submit.prevent="setValue">
-						<div class="form-group" v-bind:class="{ 'has-error': false, 'has-success': false }">
-							<input type="text" value="" v-model="tradable.number" id="tradableNumber" placeholder="number" class="form-control" />
-							<input type="submit" value="Submit" />
-							<input type="button" value="Cancel" @click="tradable=false" />
-						</div>
-						<ul class="list-inline">
-							<li>
-								<span>name: </span>
-								<strong v-text="tradable.market.name"></strong>
-							</li>
-							<li>
-								<span>value: </span>
-								<strong v-text="tradable.market.value"></strong>
-							</li>
-							<li>
-								<span>hold: </span>
-								<strong v-text="tradable.market.hold"></strong>
-							</li>
-							<li>
-								<span>money: </span>
-								<strong v-text="tradable.market.hold * tradable.market.value"></strong>
-							</li>
-						</ul>
-					</form>
+			<div>
+				<div v-for="item in business" v-if="item.have" class="alert alert-warning" role="alert" >
+					<ul class="list-inline">
+						<li>
+							<small>price: </small>
+							<i v-text="item.price"></i>
+						</li>
+						<li>
+							<small>hold: </small>
+							<i v-text="item.hold"></i>
+						</li>
+						<li>
+							<small>income: </small>
+							<i v-text="getProfit(item)"></i>
+						</li>
+						<li class="pull-right">
+							<a href="javascript:;" @click="setSold(item)" >Sold</a>
+						</li>
+					</ul>
 				</div>
-
-			</template>
+			</div>
 
 		</div>
 
@@ -135,140 +161,111 @@
 				data: {
 					total: 5000,
 					income: 0,
-					available: 0,
 					days: 0,
-					// today: 0,
 
-					logs: [],
-					markets: [
-						{
-							'code'	: '002469',
-							'name'	: 'Chowns',
-							'value'	: 8.58,
-							'hold'	: 0,
-							'last'	: 0
-						}
-					],
+					market: {
+						'code'	: '002469',
+						'name'	: 'Chowns',
+						'price'	: 8.58,
+						'hold'	: 0
+					},
 
-					pass: false,
-					spend: 0,
-					price: 0,
+					became: [],				// 每日金额变得
+					business: [],			// 买入/卖出交易记录
 
-					number: 0,
-					tradable: false,
+					spend: 1,				// 过去天数
+					price: '',				// 单股的金额变动
 
-					selected: null
+					number: ''				// 买入或卖出数量
+
 				},
-				// computed: {
-
-					// getValidTrading: function () {
-					// 	var numberValue = this.tradable.number * this.tradable.market.value,
-					// 		holdValue = this.tradable.market.hold * this.tradable.market.value;
-
-					// 	console.log(numberValue, holdValue);
-					// },
-				// },
 				methods: {
 
-					getMarket: function ( code ) {
-						return this.markets.filter(function( market ){
-							return market.code == code;
-						})[0];
-					},
-
-					setTradable: function ( type, code ) {
-						this.tradable = {
-							'type': type,
-							'number': 0,
-							'market': this.getMarket(code)
-						};
-					},
-
+					// 买入
 					setBuy: function ( code ) {
-						if ( this.selected ) {
-							var number = (parseInt(this.tradable.number) || 0 ) * 100,
-								value = this.tradable.market.value,
-								money = number * value;
+						var number = (parseInt(this.number) || 0 ) * 100,
+							money = number * this.market.price;
 
-							var market = this.tradable.market;
+						if ( this.total >= money ) {
+							this.total -= money;
+							this.market.hold += number;
+							this.setBecameLog(number);
 
-							if ( this.total >= money ) {
-								this.total -= money;
-								market.hold += number;
-
-								this.setLog();
-							}
-						}
-						else {
-							this.selected = {
-								'type': type,
-								'number': 0,
-								'market': this.getMarket(code)
-							};
+							this.number = '';
 						}
 					},
 
-					setSold: function (  ) {
-						var number = (parseInt(this.tradable.number) || 0 ) * 100,
-							value = this.tradable.market.value,
-							money = number * value;
+					// 卖出
+					setSold: function ( data ) {
+						this.income += Number(this.getIncome( data.price, this.market.price, data.hold/100 ));
+						this.total += Number(this.getIncome( data.price, this.market.price, data.hold/100, true ));
+						this.market.hold -= data.hold;
 
-						var market = this.tradable.market;
-
-						if ( market.hold >= number ) {
-							this.total += money;
-							market.hold -= number;
-
-							this.setLog();
-						}
+						data.have = false;
 					},
 
-					setLog: function () {
-						this.logs.push({
-							'code'	: this.tradable.market.code,
-							'value'	: this.tradable.market.value,
-							'type'	: this.tradable.type,
-							'number': this.tradable.number,
-							'income': 0,
-							'date'	: 0,
-							'days'	: 0,
+					// setBusinessLog: function ( type ) {
+					// 	this.became.push({
+					// 		'index'	: this.became.length,
+					// 		'price'	: this.market.price,
+					// 		'number': this.number,
+					// 		'type'	: type,
+					// 		'income': 0,
+					// 		'date'	: 0,
+					// 		'days'	: 0,
+					// 	});
+					// },
+
+					// 交易添加记录方法
+					setBecameLog: function ( number ) {
+						this.business.push({
+							// 'code'	: this.market.code,
+							'price'	: this.market.price,
+							'hold'	: number,
+							'have'	: true
+							// 'date'	: 0,
+							// 'type'	: type,
+							// 'income': 0,
+							// 'days'	: 0,
 						});
 					},
 
 					setToday: function () {
+						var price = Number(this.price);
+
 						this.days += this.spend;
-						this.spend = '0';
+						this.market.price = price;
 
-						this.pass = false;
-
-						Number(this.price)
+						// this.spend = '';
+						// this.price = '';
 					},
 
-					setValue: function () {
-						if ( this.tradable.type == 'Buy' ) {
-							this.setBuy();
-						}
-						else {
-							this.setSold();
-						}
-						this.tradable.number = 0;
+					// 获取单笔收益
+					getProfit: function ( item ) {
+						return ((this.market.price - item.price) * item.hold).toFixed(2);
+						// return this.getIncome(item.price, this.market.price, item.hold/100);
 					},
 
-					setLengthOfDays: function () {},
+					// 加庄
+					setAdd: function () {
+						this.price = (Number(this.price) + 0.01).toFixed(2);
+					},
 
-					setPass: function ( code ) {
-						console.log(code);
-						if ( this.selected ) {
+					// 减庄
+					setSub: function () {
+						this.price = (Number(this.price) - 0.01).toFixed(2);
+					},
 
-						}
-						else {
-							this.selected = {
-								'type': 'Pass',
-								'number': 0,
-								'market': this.getMarket(code)
-							};
-						}
+					// 获取收益
+					getIncome: function ( b=1, s=10, n=1, t=false ) {
+						if ( n === true ) {
+							t = n; n = 1
+						};
+						return Number(((( s - b ) * 100 * n ) - ( s * 100 * n * 0.001 ) - (Math.max(b * 0.002, 5)) - (Math.max(b * 0.002, 5))).toFixed(2)) + ( t ? ( b * 100 * n ) : 0 );
 					}
+				},
+				ready: function () {
+					this.price = this.market.price;
 				}
 			});
 
