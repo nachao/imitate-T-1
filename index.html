@@ -63,9 +63,13 @@
 		<div class="container">
 			<h3>
 				<span>Total: </span>
-				<span v-text="getFixed(total)" ></span>
+				<span v-text="getFixed(total + income)" ></span>
 			</h3>
 			<ul class="list-inline">
+				<li>
+					<span>Usable: </span>
+					<b v-text="getFixed(income)"></b>
+				</li>
 				<li>
 					<span>Income: </span>
 					<b v-text="getFixed(income)"></b>
@@ -74,6 +78,7 @@
 				<li>
 					<span>Days: </span>
 					<b v-text="days"></b>
+					<small><i v-text="'(' + getInt(days/22) + 'months)'"></i></small>
 				</li>
 			</ul>
 			<hr>
@@ -126,7 +131,6 @@
 			</div>
 			<hr/>
 
-			<!-- 购买面板 -->
 			<div>
 				<h3>Buy</h3>
 				<form class="form" @submit.prevent="setBuy">
@@ -160,7 +164,6 @@
 			</div>
 			<hr/>
 
-			<!-- 持仓记录 -->
 			<div v-if="existOwned">
 				<h3>Owned</h3>
 				<div v-for="item in business" v-if="item.have" class="alert alert-warning" role="alert" >
@@ -206,11 +209,29 @@
 				</div>
 				<hr/>
 			</div>
-			
-			<!-- 历史记录 -->
-			<div v-if="business.length">
+
+			<!-- <div v-if="business.length">
 				<h3>History</h3>
 				<div class="history-list">
+					<span class="history-item" v-for="item in business" v-if="$index > business.length - 400" >
+						<span v-text="item.days"></span>
+						<span v-text="item.type"></span><br/>
+						<ins v-if="item.type == 'B'" v-text="item.price"></ins>
+						<template v-if="item.type == 'S'">
+							<ins v-text="item.sell"></ins>
+							<small v-text="getIncome(item.price, item.sell, item.number/100)"></small>
+							<small v-text="'('+getYield(item.price, item.sell, item.number/100)+')'"></small>
+						</template>
+					</span>
+				</div>
+				<div class="clearfix"></div>
+				<hr/>
+			</div> -->
+
+			<!-- <div class="">
+				<h3>Yield</h3>
+				<div class="">
+					<span>Month</span>
 					<span class="history-item" v-for="item in business" v-if="$index > business.length - 4" >
 						<span v-text="item.days"></span>
 						<span v-text="item.type"></span><br/>
@@ -221,11 +242,9 @@
 						</template>
 					</span>
 				</div>
-				<div class="clearfix"></div>
-				<hr/>
-			</div>
+			</div> -->
 
-			<div v-if="intercalate">
+			<!-- <div v-if="intercalate">
 				<h3>Seting</h3>
 				<div>
 					<span>setting total: </span>
@@ -240,14 +259,25 @@
 				<hr/>
 			</div>
 			<a href="javascript:;" @click="intercalate = !intercalate" >Set toggle</a>
-			<hr/>
+			<hr/> -->
 
-			<div class="">
+			<!-- <div class="">
 				<h3>Requirement</h3>
 				<p>1、显示每个月的收益率，以及收益总额。</p>
-				<p>2、设置每个月的标准是1%的收益率。</p>
+				<p>2、设置每个月的标准是22%的收益率，以及为了满足月。</p>
 				<p>3、记录每个月的收益率到“简单数据”中，进行一年的模拟操作，推算出1一年中1%收益的年份的占比。如果大于则说明这个计划成立，如果小于则可以降低每月的收益率，因为如果按照1%的月收益率半年就可以获得500%。</p>
-			</div>
+
+				<p>4、得出一个根据买入价和手续费得出1%净收益的卖出价的一个公式函数。</p>
+				<p>5、尽快得出一个月的正常情况下的22天中的目标收益率的占比，进行至少12个月的模拟测试得出数据。在得出了月内目标收益率的占比后，需要根据占比重新计算日净收益率，始终确保月净收益率为22%。</p>
+
+				<p>举例：如果一个月按照正常的22天计算，月目标收益占比为70%，那么如收益率则需要达到1.3%。公式：for(var a=10000,x=0.013,i=1;i<=12*(22*(0.7));i++){ a=a+a*x;console.log(a,a*x) }</p>
+
+				<p>6、交易采用当天下午收盘时卖，然后根据情况再立即买。在现实操作中可以在休息是看盘到达预计净收益即可卖出，在此一定要确保，每天都在进行买入和卖出的操作。因此不管是早上卖出和买入都是可以的。</p>
+
+				<p>7、真实情况下，对每天的收益额，每月的收益额，以及对应的收益率进行记录，包括总金额。公司可以自己做，为了以目标为导向有一个明确的系统。只要确保在计划的时间点完成了目标即可，要求不多不少。</p>
+			</div> -->
+
+			{{ monthYield }}
 
 		</div>
 
@@ -288,6 +318,10 @@
 
 					intercalate: false,
 
+					imitate: 0,				// 模拟次数
+
+					annualearnings: [],
+
 				},
 				computed: {
 
@@ -319,12 +353,29 @@
 					// 持仓上限
 					toplimit: function () {
 						return parseInt(this.total / (this.market.price * 100));
+					},
+
+					// 计算月收益率
+					monthYield: function () {
+						var arr = this.existHistory,
+							length = parseInt(arr.length / 22);
+
+						var month = 0;
+						for ( var i=0; i<length; i++ ) {
+							month = arr.slice(i*22, i*22+22);
+
+							month.
+							console.log(month);
+						}
+
+						var result = '';
+						return result;
 					}
 
 				},
 				watch: {
 
-					// 计算收益率
+					// 计算日收益率
 					previous: function () {
 						this.yield = (( this.price - this.previous ) / this.price * 100).toFixed(2) + '%';
 
@@ -492,12 +543,22 @@
 						clearTimeout(window.t);
 					},
 
-					// 获取收益
+					// 获取净收益总额
 					getIncome: function ( b=1, s=10, n=1, t=false ) {
 						if ( n === true ) {
 							t = n; n = 1
 						};
 						return Number(((( s - b ) * 100 * n ) - ( s * 100 * n * 0.001 ) - (Math.max(b * 0.002, 5)) - (Math.max(b * 0.002, 5))).toFixed(2)) + ( t ? ( b * 100 * n ) : 0 );
+					},
+
+					// 获取净收益率
+					getYield: function ( b=1, s=10, n=1, t=false ) {
+						if ( n === true ) {
+							t = n; n = 1
+						};
+						var income = Number(((( s - b ) * 100 * n ) - ( s * 100 * n * 0.001 ) - (Math.max(b * 0.002, 5)) - (Math.max(b * 0.002, 5))).toFixed(2)) + ( t ? ( b * 100 * n ) : 0 );
+
+						return this.getFixed(income / (b*n*100) * 100) + '%';
 					},
 
 					// 获取两位小数
@@ -508,6 +569,71 @@
 					// 取整数
 					getInt: function ( value ) {
 						return parseInt(value) || 0;
+					},
+
+					// 模拟交易
+					setImitate: function () {
+						var change = parseInt(Math.random()*100)+1 <= 75,			// 几率
+							random = Number(Number( (Math.random()*10).toFixed(2) / 100 )).toFixed(2);
+
+						random = 0.001 + (parseInt((Math.random()*33)) / 1000);
+
+						var value = Number(this.price * random) || 0;
+
+						// 价格
+						if ( change ) {
+							this.price = (Number(this.price) + value).toFixed(2);
+						}
+						else {
+							this.price = (Number(this.price) - value).toFixed(2);
+						}
+						this.setToday();
+
+						// 卖出
+						if ( this.existOwned ) {
+							for ( var i=0, item; item = this.business[i]; i++ ) {
+								if ( item.have ) {
+									this.offtake = item.number / 100;
+									this.sold = item;
+									break;
+								}
+							}
+							if ( this.sold ) {
+								this.setSold();
+							}
+						}
+
+						// 存入
+						if ( this.business % 22 == 0 ) {
+							this.total += 1000;
+						}
+
+						if ( this.imitate < 22 * 12 ) {	// 22 * 12
+
+							// 买入
+							this.number = this.toplimit;
+							this.setBuy();
+
+							this.imitate += 1;
+							setTimeout(this.setImitate, 10);
+						}
+						else {
+							var self = this;
+							window.annualearnings = this.annualearnings.push(this.total + this.income);
+							setTimeout(function(){
+								self.total = 10000;
+								self.income = 0;
+								self.price = 8.58;
+								self.business = [];
+								self.became = [];
+								self.spend = 1;
+								self.number = 1;
+								self.offtake = 1;
+								self.days = 1;
+								self.imitate = 0
+								self.setImitate();
+							}, 3000);
+						}
 					}
 
 					// 获取收益率
@@ -518,8 +644,29 @@
 				ready: function () {
 					this.price = this.market.price;
 					this.previous = this.market.price;
+
+					this.setImitate();
 				}
 			});
+
+
+			
+
+			// 获取收益
+			// var income = function ( b=1, s=10, n=1, t=false ) {
+			// 		if ( n === true ) {
+			// 			t = n; n = 1
+			// 		};
+			// 		return Number(((( s - b ) * 100 * n ) - ( s * 100 * n * 0.001 ) - (Math.max(b * 0.002, 5)) - (Math.max(b * 0.002, 5))).toFixed(2)) + ( t ? ( b * 100 * n ) : 0 );
+			// 	};
+			// var value = 10000;
+			// for ( var i =0; i<12; i++ ) {
+			// 	console.log( (i+1) + '月-----------------------');
+			// 	console.log( '本金：' + value, '收益：' + parseInt(value*0.3), '总金额：' + (value += parseInt(value * 0.3)) );
+			// }
+
+			// 日净收益为1%，每月净收益22%，计算出年净收益率：1000%。
+			// for(var a=10000,x=0.22,i=1;i<=12;i++){ a=a+a*x }
 
 		</script>
 	</body>
