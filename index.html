@@ -35,7 +35,7 @@
 
 			.form-control {
 				display: initial;
-				width: 60px;
+				width: 100px;
 				height: initial;
 				border-radius: 0px;
 				padding: 2px 10px;
@@ -210,10 +210,10 @@
 				<hr/>
 			</div>
 
-			<!-- <div v-if="business.length">
+			<div v-if="business.length">
 				<h3>History</h3>
 				<div class="history-list">
-					<span class="history-item" v-for="item in business" v-if="$index > business.length - 400" >
+					<span class="history-item" v-for="item in business" v-if="$index > business.length - 22" >
 						<span v-text="item.days"></span>
 						<span v-text="item.type"></span><br/>
 						<ins v-if="item.type == 'B'" v-text="item.price"></ins>
@@ -226,40 +226,43 @@
 				</div>
 				<div class="clearfix"></div>
 				<hr/>
-			</div> -->
+			</div>
 
-			<!-- <div class="">
+			<div v-if="monthYield">
 				<h3>Yield</h3>
 				<div class="">
-					<span>Month</span>
-					<span class="history-item" v-for="item in business" v-if="$index > business.length - 4" >
-						<span v-text="item.days"></span>
-						<span v-text="item.type"></span><br/>
-						<ins v-if="item.type == 'B'" v-text="item.price"></ins>
-						<template v-if="item.type == 'S'">
-							<ins v-text="item.sell"></ins>
-							<small v-text="getIncome(item.price, item.sell, item.number/100)"></small>
-						</template>
-					</span>
-				</div>
-			</div> -->
-
-			<!-- <div v-if="intercalate">
-				<h3>Seting</h3>
-				<div>
-					<span>setting total: </span>
-					<span v-text="total"></span>
-					<span class="pull-right">
-						<a href="javascript:;" @click="total+=1000" >+1000</a>
-						<a href="javascript:;" @click="total+=5000" >+5000</a>
-						<a href="javascript:;" @click="total-=1000">-1000</a>
-						<a href="javascript:;" @click="total-=5000">-5000</a>
-					</span>
+					<p><span>Year: </span>{{ monthYield.year.length ? monthYield.year : '-' }}</p>
+					<p><span>Month: </span>{{ monthYield.month.length ? monthYield.month : '-' }}</p>
+					<p><span>Standardizedrate: </span>{{ monthYield.standardizedrate || '-' }}</p>
 				</div>
 				<hr/>
 			</div>
-			<a href="javascript:;" @click="intercalate = !intercalate" >Set toggle</a>
-			<hr/> -->
+
+			<div>
+				<h3>Seting</h3>
+				<template  v-if="intercalate">
+					<p>
+						<span>setting total: </span>
+						<span v-text="total"></span>
+						<span class="pull-right">
+							<a href="javascript:;" @click="total+=1000" >+1000</a>
+							<a href="javascript:;" @click="total+=5000" >+5000</a>
+							<a href="javascript:;" @click="total-=1000">-1000</a>
+							<a href="javascript:;" @click="total-=5000">-5000</a>
+						</span>
+					</p>
+					<p>
+						<span>auto imitate: </span>
+						<span class="pull-right">
+							<a href="javascript:;" @click="setImitate" >gooo</a>
+						</span>
+					</p>
+				</template>
+				<p>
+					<b><a href="javascript:;" @click="intercalate = !intercalate" >Set toggle</a></b>
+				</p>
+				<hr/>
+			</div>
 
 			<!-- <div class="">
 				<h3>Requirement</h3>
@@ -276,8 +279,6 @@
 
 				<p>7、真实情况下，对每天的收益额，每月的收益额，以及对应的收益率进行记录，包括总金额。公司可以自己做，为了以目标为导向有一个明确的系统。只要确保在计划的时间点完成了目标即可，要求不多不少。</p>
 			</div> -->
-
-			{{ monthYield }}
 
 		</div>
 
@@ -321,6 +322,7 @@
 					imitate: 0,				// 模拟次数
 
 					annualearnings: [],
+					yields: [],
 
 				},
 				computed: {
@@ -355,20 +357,54 @@
 						return parseInt(this.total / (this.market.price * 100));
 					},
 
-					// 计算月收益率
+					// 计算收益率统计
 					monthYield: function () {
-						var arr = this.existHistory,
+						var arr = this.business.filter(function( item ){ return !item.have && item.type == 'S' }),
 							length = parseInt(arr.length / 22);
 
-						var month = 0;
-						for ( var i=0; i<length; i++ ) {
-							month = arr.slice(i*22, i*22+22);
+						var standard = 0,
+							temp = 0,
+							sum;
 
-							month.
-							console.log(month);
+						var	result = {
+								month: [],
+								year: [],
+								standardizedrate: ''
+							};
+
+						// 年
+						for ( var i=0; i<parseInt(arr.length / (22 * 12)); i++ ) {
+							temp=0;
+							arr.slice(i*(22*12), i*(22*12)+(22*12)).map(function( item ){
+								temp += (item.sell - item.price) / item.price * 100;
+								sum += 
+							});
+							// if ( temp > (22*12) ) {
+							// 	standard += 1;
+							// }
+							result.year.push((temp/22).toFixed(2) + '%');
 						}
 
-						var result = '';
+						// 月
+						for ( var i=0; i<length; i++ ) {
+							temp=0;
+							arr.slice(i*22, i*22+22).map(function( item ){
+								temp += (item.sell - item.price) / item.price * 100;
+							});
+							if ( temp > 22 ) {
+								standard += 1;
+							}
+							result.month.push({
+								ratio: (temp/22).toFixed(2) + '%',
+								value: 
+							});
+						}
+
+						// 月标准率
+						if ( standard ) {
+							result.standardizedrate = (standard / result.month.length * 100).toFixed(2) + '%';
+						}
+
 						return result;
 					}
 
@@ -618,21 +654,21 @@
 							setTimeout(this.setImitate, 10);
 						}
 						else {
-							var self = this;
-							window.annualearnings = this.annualearnings.push(this.total + this.income);
-							setTimeout(function(){
-								self.total = 10000;
-								self.income = 0;
-								self.price = 8.58;
-								self.business = [];
-								self.became = [];
-								self.spend = 1;
-								self.number = 1;
-								self.offtake = 1;
-								self.days = 1;
-								self.imitate = 0
-								self.setImitate();
-							}, 3000);
+							// var self = this;
+							// window.annualearnings = this.annualearnings.push(this.total + this.income);
+							// setTimeout(function(){
+							// 	self.total = 10000;
+							// 	self.income = 0;
+							// 	self.price = 8.58;
+							// 	self.business = [];
+							// 	self.became = [];
+							// 	self.spend = 1;
+							// 	self.number = 1;
+							// 	self.offtake = 1;
+							// 	self.days = 1;
+							// 	self.imitate = 0
+							// 	self.setImitate();
+							// }, 3000);
 						}
 					}
 
@@ -645,7 +681,7 @@
 					this.price = this.market.price;
 					this.previous = this.market.price;
 
-					this.setImitate();
+					// this.setImitate();
 				}
 			});
 
