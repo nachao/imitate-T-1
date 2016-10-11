@@ -35,34 +35,50 @@
 
 			.form-control {
 				display: initial;
-				width: 100px;
+				width: 60px;
 				height: initial;
 				border-radius: 0px;
 				padding: 2px 10px;
 			}
 
+			.history-list .history-item {
+				display: inline-block;
+				float: left;
+				border-radius: 3px;
+				background: #90a4ae;
+				color: white;
+				padding: 10px;
+				margin: 0 10px 10px 0;
+			}
+
+			.total-text { 
+				border: 0px;
+				border-bottom: 1px solid #aaa;
+				outline: none;
+			}
+
 		</style>
 	</head>
-	<body>
 
 		<div class="container">
 			<h3>
 				<span>Total: </span>
-				<span v-text="total"></span>
+				<span v-text="getFixed(total)" ></span>
 			</h3>
 			<ul class="list-inline">
 				<li>
 					<span>Income: </span>
-					<span v-text="income"></span>
+					<b v-text="getFixed(income)"></b>
+					<small><i v-text="'(' + getFixed(income/total) + '%)'"></i></small>
 				</li>
 				<li>
 					<span>Days: </span>
-					<span v-text="days"></span>
+					<b v-text="days"></b>
 				</li>
 			</ul>
 			<hr>
 
-			<div class="alert alert-danger" role="alert">
+			<div class="alert" :class="{ 'alert-success': !trends, 'alert-danger': trends }" role="alert">
 				<ul class="list-inline">
 					<li>
 						<b v-text="market.code"></b>
@@ -71,7 +87,11 @@
 						<span v-text="market.name"></span>
 					</li>
 					<li>
-						<i v-text="market.price"></i>
+						<i v-text="getFixed(market.price)"></i>
+						<i v-text="'(' + yield + ')'"></i>
+					</li>
+					<li class="pull-right">
+						<b v-text="market.hold"></b>
 					</li>
 				</ul>
 			</div>
@@ -88,75 +108,156 @@
 				<form @submit.prevent="setToday">
 					<div class="form-group">
 						<input type="text" v-model="price"  placeholder="price" class="form-control" />
-						<input type="button" value="+" @click="setAddPrice" @mousedown="" />
-						<input type="button" value="-" @click="setSubPrice" />
-						<input type="submit" value="Update" />
+						<span class="pull-right">
+							<input type="button" value="+" 
+								@click="setAddPrice" 
+								@mousedown="setLastStart('setAddPrice')" 
+								@mouseup="setLastEnd"
+								@mouseleave="setLastEnd" />
+							<input type="button" value="-" 
+								@click="setSubPrice"
+								@mousedown="setLastStart('setSubPrice')" 
+								@mouseup="setLastEnd"
+								@mouseleave="setLastEnd" />
+							<input type="submit" value="Update" />
+						</span>
 					</div>
 				</form>
 			</div>
 			<hr/>
 
+			<!-- 购买面板 -->
 			<div>
-				<h3>Buy/Sold</h3>
+				<h3>Buy</h3>
 				<form class="form" @submit.prevent="setBuy">
-					<div class="form-group" :class="{'has-error': !canBuy, 'has-success': canBuy }">
+					<div class="form-group">
 						<input v-model="number" placeholder="number" class="form-control" />
-						<input type="button" value="+" @click="setAddHold" />
-						<input type="button" value="-" @click="setSubHold" />
-						<input type="submit" value="Buy" />
+						<span class="pull-right">
+							<input type="button" value="+" @click="setAddHold"
+								@mousedown="setLastStart('setAddHold')" 
+								@mouseup="setLastEnd"
+								@mouseleave="setLastEnd" />
+							<input type="button" value="-" @click="setSubHold"
+								@mousedown="setLastStart('setSubHold')" 
+								@mouseup="setLastEnd"
+								@mouseleave="setLastEnd"/>
+							<input type="button" value="50%" @click="number = getInt(toplimit/2)" />
+							<input type="button" value="100%" @click="number = toplimit" />
+							<input type="submit" value="Buy" />
+						</span>
 					</div>
-					<ul class="list-inline">
-						<li>
-							<span>name: </span>
-							<strong v-text="market.name"></strong>
-						</li>
-						<li>
-							<span>price: </span>
-							<strong v-text="market.price"></strong>
-						</li>
-						<li>
-							<span>hold: </span>
-							<strong v-text="market.hold"></strong>
-						</li>
-						<!-- <li>
-							<span>money: </span>
-							<strong v-text="market.hold * market.price"></strong>
-						</li> -->
-					</ul>
 				</form>
+				<ul class="list-inline">
+					<li>
+						<small>Open positions: </small>
+						<b v-text="toplimit"></b>
+					</li>
+					<li>
+						<small>Need to pay: </small>
+						<b v-text="getFixed(number * price * 100)"></b>
+					</li>
+				</ul>
 			</div>
 			<hr/>
 
-			<div>
+			<!-- 持仓记录 -->
+			<div v-if="existOwned">
+				<h3>Owned</h3>
 				<div v-for="item in business" v-if="item.have" class="alert alert-warning" role="alert" >
 					<ul class="list-inline">
 						<li>
-							<small>price: </small>
-							<i v-text="item.price"></i>
+							<!-- <small>price: </small> -->
+							<b v-text="item.price"></b>
 						</li>
 						<li>
-							<small>hold: </small>
-							<i v-text="item.hold"></i>
+							<!-- <small>hold: </small> -->
+							<span v-text="item.number"></span>
+							<i v-text="'('+ getYield(item) +')'"></i>=
+							<span v-text="getProfit(item)"></span>
 						</li>
-						<li>
+						<!-- <li>
 							<small>income: </small>
-							<i v-text="getProfit(item)"></i>
-						</li>
-						<li class="pull-right">
-							<a href="javascript:;" @click="setSold(item)" >Sold</a>
+						</li> -->
+						<li v-if="item.days < days" class="pull-right">
+							<a href="javascript:;" @click="sold = item" >Sold</a>
 						</li>
 					</ul>
+					<div v-if="sold && item.key == sold.key">
+						<hr/>
+						<h3>Sold</h3>
+						<form class="form" @submit.prevent="setSold">
+							<div class="form-group" >
+								<input v-model="offtake" placeholder="offtake" class="form-control" />*100
+								<span class="pull-right">
+									<input type="button" value="+" @click="setAddOfftake"
+										@mousedown="setLastStart('setAddOfftake')" 
+										@mouseup="setLastEnd"
+										@mouseleave="setLastEnd" />
+									<input type="button" value="-" @click="setSubOfftake"
+										@mousedown="setLastStart('setSubOfftake')" 
+										@mouseup="setLastEnd"
+										@mouseleave="setLastEnd" />
+									<input type="button" value="100%" @click="offtake = sold.number /100"/>
+									<input type="submit" value="Sold" />
+								</span>
+							</div>
+						</form>
+					</div>
 				</div>
+				<hr/>
+			</div>
+			
+			<!-- 历史记录 -->
+			<div v-if="business.length">
+				<h3>History</h3>
+				<div class="history-list">
+					<span class="history-item" v-for="item in business" v-if="$index > business.length - 4" >
+						<span v-text="item.days"></span>
+						<span v-text="item.type"></span><br/>
+						<ins v-if="item.type == 'B'" v-text="item.price"></ins>
+						<template v-if="item.type == 'S'">
+							<ins v-text="item.sell"></ins>
+							<small v-text="getIncome(item.price, item.sell, item.number/100)"></small>
+						</template>
+					</span>
+				</div>
+				<div class="clearfix"></div>
+				<hr/>
+			</div>
+
+			<div v-if="intercalate">
+				<h3>Seting</h3>
+				<div>
+					<span>setting total: </span>
+					<span v-text="total"></span>
+					<span class="pull-right">
+						<a href="javascript:;" @click="total+=1000" >+1000</a>
+						<a href="javascript:;" @click="total+=5000" >+5000</a>
+						<a href="javascript:;" @click="total-=1000">-1000</a>
+						<a href="javascript:;" @click="total-=5000">-5000</a>
+					</span>
+				</div>
+				<hr/>
+			</div>
+			<a href="javascript:;" @click="intercalate = !intercalate" >Set toggle</a>
+			<hr/>
+
+			<div class="">
+				<h3>Requirement</h3>
+				<p>1、显示每个月的收益率，以及收益总额。</p>
+				<p>2、设置每个月的标准是1%的收益率。</p>
+				<p>3、记录每个月的收益率到“简单数据”中，进行一年的模拟操作，推算出1一年中1%收益的年份的占比。如果大于则说明这个计划成立，如果小于则可以降低每月的收益率，因为如果按照1%的月收益率半年就可以获得500%。</p>
 			</div>
 
 		</div>
 
 		<script type="text/javascript">
 
+
 			new Vue({
 				el: 'body',
 				data: {
-					total: 5000,
+					total: 10000,
 					income: 0,
 					days: 0,
 
@@ -171,19 +272,66 @@
 					business: [],			// 买入/卖出交易记录
 
 					spend: 1,				// 过去天数
-					price: 0,				// 单股的金额变动
 
-					number: 0				// 买入或卖出数量
+					price: 0,				// 单股的金额变动
+					previous: 0,			// 单股的上次金额
+
+					number: 1,				// 买入数量
+
+					sold: null,
+					offtake: 1,				// 卖出数量
+
+					yield: '0%',			// 收益率
+					trends: true,			// 趋势
+					// harden: false,			// 涨停
+					// limit: false,			// 跌停
+
+					intercalate: false,
 
 				},
 				computed: {
 
 					// 是否可以购买
-					canBuy: function () {
-						var number = (parseInt(this.number) || 0 ) * 100;
-						return this.total >= number * this.market.price;
+					// canBuy: function () {
+					// 	var number = (parseInt(this.number) || 0 ) * 100;
+					// 	return this.total >= number * this.market.price;
+					// },
+
+					// 判断涨跌
+					// trends: function () {
+					// 	return Number(this.price) > Number(this.previous);
+					// }
+
+					// 持仓数量
+					existOwned: function () {
+						return this.business.filter(function( item ){
+							return item.have;
+						}).length;
 					},
 
+					// 交易历史
+					existHistory: function () {
+						return this.business.filter(function( item ){
+							return !item.have;
+						}).length;
+					},
+
+					// 持仓上限
+					toplimit: function () {
+						return parseInt(this.total / (this.market.price * 100));
+					}
+
+				},
+				watch: {
+
+					// 计算收益率
+					previous: function () {
+						this.yield = (( this.price - this.previous ) / this.price * 100).toFixed(2) + '%';
+
+						this.trends = Number(this.price) > Number(this.previous);
+						// this.harden = Number(this.price) > Number(this.previous);
+						// this.limit = Number(this.price) < Number(this.previous);
+					}
 				},
 				methods: {
 
@@ -192,94 +340,156 @@
 						var number = (parseInt(this.number) || 0 ) * 100,
 							money = number * this.market.price;
 
-						if ( this.total >= money ) {
+						if ( this.total >= money && money ) {
 							this.total = Number((this.total - money).toFixed(2));
 							this.market.hold += number;
-							this.setBecameLog(number);
+							this.setBuyLog(number);
+
+							this.number = 1;
 						}
 					},
 
 					// 卖出
-					setSold: function ( data ) {
-						var b = data.price,
+					setSold: function () {
+						var b = this.sold.price,
 							s = this.market.price,
-							n = data.hold/100;
+							n = this.offtake;
+
+						var number = this.offtake * 100;
 
 						this.income = Number((this.income + this.getIncome(b,s,n)).toFixed(2));
 						this.total = Number((this.total + this.getIncome(b,s,n,true)).toFixed(2));
 
-						this.market.hold -= data.hold;
-						data.have = false;
+						// 如果平仓 
+						if ( this.sold.number == number ) {
+							this.sold.have = false;
+						}
+
+						// 减仓
+						this.market.hold -= number;
+						this.sold.number -= number;
+
+						// 记录
+						this.setSoldLog(number);
+
+						// 初始化
+						this.sold = null;
+						this.offtake = 0;
 					},
 
-					// setBusinessLog: function ( type ) {
-					// 	this.became.push({
-					// 		'index'	: this.became.length,
-					// 		'price'	: this.market.price,
-					// 		'number': this.number,
-					// 		'type'	: type,
-					// 		'income': 0,
-					// 		'date'	: 0,
-					// 		'days'	: 0,
-					// 	});
-					// },
-
-					// 交易添加记录方法
-					setBecameLog: function ( number ) {
-						var isOpen = true;
+					// 添加购买交易记录
+					setBuyLog: function ( number ) {
+						var isOpen = true,
+							self = this;
 
 						this.business.map(function( item ){
-							if ( item.price == this.market.price ) {
-								isHave = false;
-								item.hold += number;
+							if ( item.price == self.market.price && item.days == self.days && item.type == 'B' ) {
+								item.number += number;
+								isOpen = false;
 							}
 						});
 
 						// 是否开仓
 						if ( isOpen ) {
 							this.business.push({
+								'type'	: 'B',
+								'key'	: new Date().getTime().toString(16),
+								'have'	: true,
+								'number': number,
 								'price'	: this.market.price,
-								'hold'	: number,
-								'have'	: true
+								'sell'	: 0,
+								'days'	: this.days
 							});
 						}
 					},
 
+					// 添加卖出记录
+					setSoldLog: function ( number ) {
+						var isNew = true,
+							self = this;
+
+						this.business.map(function( item ){
+							if ( item.days == self.days && item.type == 'S' ) {
+								item.number += number;
+								isNew = false;
+							}
+						});
+
+						if ( isNew ) {
+							this.business.push({
+								'type'	: 'S',
+								'key'	: new Date().getTime().toString(16),
+								'have'	: false,
+								'number': number,
+								'price'	: this.sold.price,
+								'sell'	: this.market.price,
+								'days'	: this.days
+							});
+						}
+					},
+
+					// 收盘定价
 					setToday: function () {
 						var price = Number(this.price);
 
-						if ( this.market.price != price ) {
-							this.days += this.spend;
-							this.market.price = price;
-						}
+						this.previous = this.market.price;
+
+						this.days += this.spend;
+						this.market.price = price;
+
+						this.became.push({
+							'date'	: this.days,
+							'price'	: this.market.price
+						});
+					},
+
+					// 获取单笔收益率
+					getYield : function ( item ) {
+						return ((this.market.price - item.price) * item.price).toFixed(2) + '%';
 					},
 
 					// 获取单笔收益
 					getProfit: function ( item ) {
-						return ((this.market.price - item.price) * item.hold).toFixed(2);
+						return ((this.market.price - item.price) * item.number).toFixed(2);
 					},
 
-					// 加庄
+					// 加庄 减庄
 					setAddPrice: function () {
 						this.price = (Number(this.price) + 0.01).toFixed(2);
 					},
-					setAddPriceLast: function () {
-						setTimeout(this.setAddPrice, 100);
-					},
-
-					// 减庄
 					setSubPrice: function () {
 						this.price = (Number(this.price) - 0.01).toFixed(2);
 					},
 
-					// 加仓
+					// 加仓 减仓
 					setAddHold: function () {
-						this.number = Number(this.number) + 1;
+						this.number = Number(this.number) + 1 > parseInt(this.total / (this.market.price * 100)) ? Number(this.number) : Number(this.number) + 1;
+					},
+					setSubHold: function () {
+						this.number = Number(this.number) - 1 < 0 ? 0 : Number(this.number) - 1;
 					},
 
-					// 减仓
-					setSubHold: function () {
-						this.number = Number(this.number) - 1;
+					// 加减 卖出 
+					setAddOfftake: function () {
+						this.offtake = Number(this.offtake) + 1 > this.sold.number / 100 ? this.offtake : Number(this.offtake) + 1;
+					},
+					setSubOfftake: function () {
+						this.offtake = Number(this.offtake) - 1 < 0 ? 0 : Number(this.offtake) - 1;
+					},
+
+					// 持续
+					setLastStart: function ( key ) {
+						var self = this;
+
+						window.t = setTimeout(function(){
+							self.setLastStart(key);
+							if ( self[key] ) {
+								self[key]();
+							}
+						}, window.t ? 100 : 500);
+					},
+					setLastEnd: function () {
+						clearTimeout(window.t);
 					},
 
 					// 获取收益
@@ -288,10 +498,26 @@
 							t = n; n = 1
 						};
 						return Number(((( s - b ) * 100 * n ) - ( s * 100 * n * 0.001 ) - (Math.max(b * 0.002, 5)) - (Math.max(b * 0.002, 5))).toFixed(2)) + ( t ? ( b * 100 * n ) : 0 );
+					},
+
+					// 获取两位小数
+					getFixed: function ( value ) {
+						return Number(value || 0).toFixed(2);
+					},
+
+					// 取整数
+					getInt: function ( value ) {
+						return parseInt(value) || 0;
 					}
+
+					// 获取收益率
+					// getYield: function () {
+					// 	return (( this.price - this.previous ) / this.price * 100).toFixed(2) + '%';
+					// }
 				},
 				ready: function () {
 					this.price = this.market.price;
+					this.previous = this.market.price;
 				}
 			});
 
