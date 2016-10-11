@@ -232,7 +232,10 @@
 				<h3>Yield</h3>
 				<div class="">
 					<p><span>Year: </span>{{ monthYield.year.length ? monthYield.year : '-' }}</p>
-					<p><span>Month: </span>{{ monthYield.month.length ? monthYield.month : '-' }}</p>
+					<p>
+						<span>Month: </span>
+						<span v-for="month in monthYield.month" v-text="month.ratio + '('+ month.value + ')'"></span>
+					</p>
 					<p><span>Standardizedrate: </span>{{ monthYield.standardizedrate || '-' }}</p>
 				</div>
 				<hr/>
@@ -374,21 +377,19 @@
 
 						// 年
 						for ( var i=0; i<parseInt(arr.length / (22 * 12)); i++ ) {
-							temp=0;
+							temp = 0;
 							arr.slice(i*(22*12), i*(22*12)+(22*12)).map(function( item ){
 								temp += (item.sell - item.price) / item.price * 100;
-								sum += 
 							});
-							// if ( temp > (22*12) ) {
-							// 	standard += 1;
-							// }
 							result.year.push((temp/22).toFixed(2) + '%');
 						}
 
 						// 月
 						for ( var i=0; i<length; i++ ) {
+							sum = 0;
 							temp=0;
 							arr.slice(i*22, i*22+22).map(function( item ){
+								sum += (item.sell - item.price ) * item.number;
 								temp += (item.sell - item.price) / item.price * 100;
 							});
 							if ( temp > 22 ) {
@@ -396,7 +397,7 @@
 							}
 							result.month.push({
 								ratio: (temp/22).toFixed(2) + '%',
-								value: 
+								value: sum
 							});
 						}
 
