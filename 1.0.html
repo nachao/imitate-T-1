@@ -57,6 +57,9 @@
 				border-bottom: 1px solid #aaa;
 				outline: none;
 			}
+			.nav-pills > li {
+				margin: 0 10px 10px 0;
+			}
 
 		</style>
 	</head>
@@ -64,88 +67,73 @@
 		<div class="container">
 			<h3>
 				<span>Total: </span>
-				<span v-text="total" ></span>
+				<span v-text="amountTotal" ></span>
 			</h3>
 			<ul class="list-inline">
 				<li>
 					<span>Usable: </span>
-					<b v-text="getFixed(usable)"></b>
+					<b v-text="getAmountAvailable()"></b>
+				</li>
+				<li>
+					<span>Input: </span>
+					<b v-text="getTotalInvestmentAmount()"></b>
 				</li>
 				<li>
 					<span>Income: </span>
-					<b v-text="getFixed(income)"></b>
-					<!-- <small><i v-text="'(' + getFixed(income/usable) + '%)'"></i></small> -->
+					<b v-text="amountIncome"></b>
 				</li>
 				<li>
 					<span>Days: </span>
-					<b v-text="days"></b>
-					<small><i v-text="'(' + getInt(days/22) + 'M.)'"></i></small>
+					<b v-text="dateLength"></b>
+					<!-- <small><i v-text="'(' + getInt(days/22) + 'M.)'"></i></small> -->
 				</li>
 			</ul>
 			<hr>
 
 			<div class="alert" :class="{ 'alert-success': !trends, 'alert-danger': trends }" role="alert">
 				<ul class="list-inline">
+					<li><b>002469</b></li>
+					<li><span>Chowns</span></li>
 					<li>
-						<b v-text="market.code"></b>
+						<i v-text="priceCurrent"></i>
+						<!-- <i v-text="'(' + yield + ')'"></i> -->
 					</li>
-					<li>
-						<span v-text="market.name"></span>
-					</li>
-					<li>
-						<i v-text="getFixed(market.price)"></i>
-						<i v-text="'(' + yield + ')'"></i>
-					</li>
-					<!-- <li class="pull-right">
-						<b v-text="market.hold"></b>
-					</li> -->
 				</ul>
 			</div>
 			<hr />
 
 			<div>
-				<h3>Spend</h3>
+				<h3>Date</h3>
 				<div class="length-of-days" >
-					<i v-for="key in 6" v-text="key"
-						v-bind:class="{ 'act' :key <= spend }" 
-						@click="spend = key" >
-					</i>
+					<i v-for="key in 6" v-text="key" v-bind:class="{ 'act' :key <= dateAdd }" @click="dateAdd = key" ></i>
 				</div>
-				<form @submit.prevent="setToday">
+				<form @submit.prevent="setDateAndPrice">
 					<div class="form-group">
-						<input type="text" v-model="price"  placeholder="price" class="form-control" />
+						<input type="text" v-model="priceSet" placeholder="price set" class="form-control" />
 						<span class="pull-right">
 							<input class="btn btn-default" type="button" value="   +   " 
-								@click="setAddPrice" 
-								@mousedown="setLastStart('setAddPrice')" 
+								@click="setValue('priceSet', 0.01)" 
+								@mousedown="setLastStart('priceSet', 0.01)" 
 								@mouseup="setLastEnd" />
 							<input class="btn btn-default" type="button" value="   -   " 
-								@click="setSubPrice"
-								@mousedown="setLastStart('setSubPrice')" 
+								@click="setValue('priceSet', -0.01)"
+								@mousedown="setLastStart('priceSet', -0.01)" 
 								@mouseup="setLastEnd" />
 							<input class="btn btn-default" type="submit" value="Update" />
 						</span>
 					</div>
 				</form>
+				<hr/>
 			</div>
-			<hr/>
 
 			<div>
 				<h3>Buy</h3>
 				<form class="form" @submit.prevent="setBuy">
 					<div class="form-group">
-						<input v-model="number" placeholder="number" class="form-control" />
+						<input v-model="quantityBuy" placeholder="quantity buy" class="form-control" />
 						<span class="pull-right">
-							<!-- <input type="button" value="+" @click="setAddHold"
-								@mousedown="setLastStart('setAddHold')" 
-								@mouseup="setLastEnd"
-								@mouseleave="setLastEnd" />
-							<input type="button" value="-" @click="setSubHold"
-								@mousedown="setLastStart('setSubHold')" 
-								@mouseup="setLastEnd"
-								@mouseleave="setLastEnd"/> -->
-							<input class="btn btn-default" type="button" value="50%" @click="number = getInt(toplimit/2)" />
-							<input class="btn btn-default" type="button" value="100%" @click="number = toplimit" />
+							<input class="btn btn-default" type="button" value="50%" @click="setQuantityBuy(0.5)" />
+							<input class="btn btn-default" type="button" value="100%" @click="setQuantityBuy(1)" />
 							<input class="btn btn-default" type="submit" value="Buy" />
 						</span>
 					</div>
@@ -153,31 +141,53 @@
 			</div>
 			<hr/>
 
-			<div v-if="existOwned || entrustOwned">
+			<div v-if="getTotalInvestmentAmount()">
 				<h3>Transaction</h3>
-				<div v-for="item in business" v-if="item.have && item.number > 0" class="alert alert-warning" role="alert" >
+				<div v-for="item in holdingRecordList" v-if="item.buyTotal > item.soldTotal" class="alert alert-warning" role="alert" >
 					<ul class="list-inline">
 						<li>
-							<b>Hold</b>
-							<span v-text="item.price"></span>
+							<b v-text="item.buyPrice"></b>
 						</li>
 						<li class="pull-right">
-							<a href="javascript:;" @click="getEntrust(item)" >Entrust</a>
-							<a href="javascript:;" @click="getSold(item)" v-if="item.days < days" >&nbsp;&nbsp;&nbsp;Sold</a>
+							<a href="javascript:;" @click="setEntrustToggle(item)" >Entrust</a>
+							<a href="javascript:;" @click="setSoldToggle(item)" v-if="item.buyDate < dateLength" >&nbsp;&nbsp;&nbsp;Sold</a>
 						</li>
 					</ul>
 					<ul class="list-inline">
 						<li title="Current income">
 							<span>CI=</span>
-							<small v-text="getProfit(item)"></small>
-							<small v-text="'(' + getYield(item) + ')'"></small>
+							<small v-text="getCurrentIncome(item)"></small>
+							<small v-text="'(' + getCurrentYield(item) + ')'"></small>
 						</li>
-						<li title="Holding quantity ">
+						<li title="Holding quantity">
 							<span>HQ=</span>
-							<small v-text="item.number"></small>
+							<small v-text="item.buyTotal - item.soldTotal"></small>
 						</li>
 					</ul>
-					<div v-if="entrust && item.key == entrust.key">
+
+					<div v-for="entrust in item.entrustLog" >
+						<hr/>
+						<ul class="list-inline">
+							<li>
+								<b>E.</b>
+								<small v-text="entrust.entrustPrice"></small>
+							</li>
+							<li class="pull-right">
+								<a href="javascript:;" @click="setCancelEntrust(item, entrust)" >Cancel</a>
+							</li>
+							<li title="Anticipated revenue">
+								<span>AR=</span>
+								<small v-text="getEntrustIncome(item, entrust)"></small>
+								<!-- <small v-text="'(' + getEntrustYield(item, entrust) + ')'"></small> -->
+							</li>
+							<li title="Entrust quantity">
+								<span>EQ=</span>
+								<small v-text="entrust.entrustQuantity"></small>
+							</li>
+						</ul>
+					</div>
+
+					<div v-if="selectEntrust && item.buyPrice == selectEntrust.buyPrice">
 						<hr/>
 						<h3>Entrust</h3>
 						<form class="form-horizontal" @submit.prevent="setEntrust">
@@ -190,12 +200,6 @@
 								<div class="col-sm-8">
 									<input v-model="entrustPrice" placeholder="price" class="form-control" disabled="true" />
 									<span class="pull-right">
-										<!-- <input type="button" value="+" @click="setAddEntrustPrice"
-											@mousedown="setLastStart('setAddEntrustPrice')" 
-											@mouseup="setLastEnd" />
-										<input type="button" value="-" @click="setSubEntrustPrice"
-											@mousedown="setLastStart('setSubEntrustPrice')" 
-											@mouseup="setLastEnd" /> -->
 										<input class="btn btn-default" type="button" value="x1" @click="setSuggestedPoints(item)"/>
 										<input class="btn btn-default" type="button" value="x2" @click="setSuggestedPoints(item, 2)"/>
 									</span>
@@ -207,16 +211,8 @@
 								<div class="col-sm-8">
 									<input v-model="entrustNumber" placeholder="number" class="form-control" disabled="true" />*100
 									<span class="pull-right">
-										<!-- <input type="button" value="+" @click="setAddEntrustNumber"
-											@mousedown="setLastStart('setAddEntrustNumber')" 
-											@mouseup="setLastEnd"
-											@mouseleave="setLastEnd" />
-										<input type="button" value="-" @click="setSubEntrustNumber"
-											@mousedown="setLastStart('setSubEntrustNumber')" 
-											@mouseup="setLastEnd"
-											@mouseleave="setLastEnd" /> -->
-										<input class="btn btn-default" type="button" value="50%" @click="entrustNumber = getInt(entrust.number /200)"/>
-										<input class="btn btn-default" type="button" value="100%" @click="entrustNumber = entrust.number /100"/>
+										<input class="btn btn-default" type="button" value="50%" @click="setSuggestedNumber(item, 0.5)"/>
+										<input class="btn btn-default" type="button" value="100%" @click="setSuggestedNumber(item)"/>
 									</span>
 									<div class="clearfix"></div>
 								</div>
@@ -232,7 +228,8 @@
 							</div>
 						</form>
 					</div>
-					<div v-if="sold && item.key == sold.key">
+
+					<div v-if="selectSale && item.key == selectSale.key">
 						<hr/>
 						<h3>Sold</h3>
 						<form class="form-horizontal" @submit.prevent="setSold">
@@ -241,18 +238,10 @@
 									<span>Sell quantity</span>
 								</label>
 								<div class="col-sm-8">
-									<input v-model="offtake" placeholder="offtake" class="form-control" disabled="true" />*100
+									<input v-model="quantitySell" placeholder="quantity sell" class="form-control" disabled="true" />
 									<span class="pull-right">
-										<!-- <input type="button" value="+" @click="setAddOfftake"
-											@mousedown="setLastStart('setAddOfftake')" 
-											@mouseup="setLastEnd"
-											@mouseleave="setLastEnd" />
-										<input type="button" value="-" @click="setSubOfftake"
-											@mousedown="setLastStart('setSubOfftake')" 
-											@mouseup="setLastEnd"
-											@mouseleave="setLastEnd" /> -->
-										<input class="btn btn-default" type="button" value="50%" @click="offtake = sold.number /200"/>
-										<input class="btn btn-default" type="button" value="100%" @click="offtake = sold.number /100"/>
+										<input class="btn btn-default" type="button" value="50%" @click="setQuantitySale(0.5)"/>
+										<input class="btn btn-default" type="button" value="100%" @click="setQuantitySale()"/>
 									</span>
 									<div class="clearfix"></div>
 								</div>
@@ -260,7 +249,7 @@
 							<div class="form-group row" >
 								<div class="col-sm-12">
 									<span class="pull-right">
-										<input class="btn btn-default" type="button" value="Close" @click="sold = null"/>
+										<input class="btn btn-default" type="button" value="Close" @click="selectSale = null"/>
 										<input class="btn btn-success" type="submit" value="Sold" />
 									</span>
 									<div class="clearfix"></div>
@@ -269,69 +258,44 @@
 						</form>
 					</div>
 				</div>
-				<div v-for="item in entrustList" v-if="item.status" class="alert alert-success" role="alert" >
-					<ul class="list-inline">
-						<li>
-							<b>Entr.</b>
-							<span v-text="item.price"></span>
-							<small v-text="'('+ item.sold.price +')'"></small>
-						</li>
-						<li class="pull-right">
-							<a href="javascript:;" @click="setCancelEntrust(item)" >Cancel</a>
-						</li>
-					</ul>
-					<ul class="list-inline">
-						<li title="Anticipated revenue">
-							<span>AR=</span>
-							<small v-text="getEntrustProfit(item)"></small>
-							<small v-text="'(' + getEntrustYield(item) + ')'"></small>
-						</li>
-						<li title="Entrust number">
-							<span>EN=</span>
-							<small v-text="item.offtake * 100"></small>
-						</li>
-					</ul>
-				</div>
-				<hr/>
 			</div>
 
-			<div v-if="monthYield">
+			<div>
 				<h3>Statistics</h3>
 				<ul class="list-inline">
 					<li>
 						<small>Day rate of return(Clean): </small>
-						<b v-text="monthYield.dayRateOfReturn"></b>
+						<b :class="{'text-danger': getDayRateReturn() > ( entrustYield * 100 ), 'text-success': getDayRateReturn() <= ( entrustYield * 100 ) }" v-text="getDayRateReturn() + '%'"></b>
 					</li>
 					<li>
 						<small>Total Income ratio: </small>
-						<b v-text="monthYield.dayIncomeRatio"></b>
+						<b v-text="getTotalIncomeRatio() + '%'"></b>
 					</li>
-					<li>
+					<!-- <li>
 						<small>Total profit(Clean): </small>
-						<b v-text="getFixed(totalProfitAndLoss.profit)"></b>
+						<b v-text=""></b>
 					</li>
 					<li>
 						<small>Total loss(Clean): </small>
-						<b v-text="getFixed(totalProfitAndLoss.loss)"></b>
-					</li>
+						<b v-text=""></b>
+					</li> -->
 				</ul>
 			    <div id="echartsEl" style="width: 100%;height:300px;"></div>
 				<hr/>
 			</div>
 
-			<div v-if="business.length">
+			<div v-if="getAllSoldLog().length > 0">
 				<h3>History(Clean)</h3>
 				<div class="history-list">
-					<span class="history-item" v-for="item in business" v-if="$index > business.length - 22" >
-						<b v-text="item.days"></b>
-						<small v-text="item.type"></small>
-						<small v-if="item.type == 'B'" v-text="item.price"></small>
-						<template v-if="item.type == 'S'">
-							<small v-text="item.sell"></small>
-							<span v-text="getCleanYield(item)"></span>
-							<!-- <small v-text="'('+ getCleanProfit(item) +'%)'"></small> -->
-						</template>
-					</span>
+					<ul class="nav nav-pills" role="tablist">
+						<li role="presentation" class="active" v-for="(index, item) in getAllSoldLog()">
+							<a href="#">
+								<span v-text="item.soldDate"></span>
+								<span class="badge" v-text="(item.soldIncome > 0 ? '+' : '') + item.soldIncome"></span>
+								<span v-text="item.soldPrice"></span>
+							</a>
+						</li>
+					</ul>
 				</div>
 				<div class="clearfix"></div>
 				<hr/>
@@ -372,7 +336,9 @@
 				<p>4、得出一个根据买入价和手续费得出1%净收益的卖出价的一个公式函数。</p>
 				<p>5、尽快得出一个月的正常情况下的22天中的目标收益率的占比，进行至少12个月的模拟测试得出数据。在得出了月内目标收益率的占比后，需要根据占比重新计算日净收益率，始终确保月净收益率为22%。</p>
 
-				<p>举例：如果一个月按照正常的22天计算，月目标收益占比为70%，那么如收益率则需要达到1.3%。公式：for(var a=10000,x=0.013,i=1;i<=12*(22*(0.7));i++){ a=a+a*x;console.log(a,a*x) }</p>
+				<p>举例：如果一个月按照正常的22天计算，月目标收益占比为70%，那么如收益率则需要达到1.3%。公式：
+					for(var a=10000,x=0.013,i=1;i<=12*(22*(0.7));i++){ a=a+a*x;console.log(a,a*x) }
+				</p>
 
 				<p>6、交易采用当天下午收盘时卖，然后根据情况再立即买。在现实操作中可以在休息是看盘到达预计净收益即可卖出，在此一定要确保，每天都在进行买入和卖出的操作。因此不管是早上卖出和买入都是可以的。</p>
 
@@ -396,10 +362,6 @@
 					总收亏值，
 					当前价格值，
 
-				动态数据集：
-					价格变动值，
-					购买数量值
-
 				独立数据集
 					委托控件数据值，
 					卖出控件数据值，
@@ -413,248 +375,603 @@
 				日期类，
 				记录类，
 
+				公共类，
+
 
 			*/
 
 			new Vue({
 				el: 'body',
 				data: {
-					startup: 1000,
 
-					usable: 1000,
-					income: 0,
-					days: 1,
+					// 启动资金
+					initialCapital: 1000,
 
-					market: {
-						'code'	: '002469',
-						'name'	: 'Chowns',
-						'price'	: 8.58,
-						'hold'	: 0
-					},
+					// 交易历史数据集合
+					holdingRecordList: [],
+					buyLogList: [],
+					soldLogList: [],
 
-					became: [],				// 每日金额变得
-					business: [],			// 买入/卖出交易记录
+					// 日期变化数据集合
+					dateList: [],
 
-					spend: 1,				// 过去天数
+					// 日期数值
+					dateLength: 1,
+					dateAdd: 1,
 
-					price: 0,				// 单股的金额变动
-					previous: 0,			// 单股的上次金额
+					// 金额数值
+					amountTotal: 0,
+					amountIncome: 0,
+					amountChange: 0,
 
-					number: 1,				// 买入数量
+					// 交易控件数据值
+					priceCurrent: 8.39,
+					priceSet: 8.39,
+					
+					// 交易控件数据值 - 数量
+					quantityBuy: 0,
+					quantitySell: 0,
+					// quantityHolding: 0,
+					
+					// 交易控件数据值 - 选中交易
+					selectSale: null,
+					selectEntrust: null,
 
-					sold: null,
-					offtake: 1,				// 卖出数量
-
-					yield: '0%',			// 收益率
-					trends: true,			// 趋势
-					// harden: false,		// 涨停
-					// limit: false,		// 跌停
-
-					intercalate: false,
-
-					imitate: 0,				// 模拟次数
-
-					annualearnings: [],
-					yields: [],
-
-					entrust: null,			// 委托操作数据
-					entrustPrice: 0,		// 委托价
-					entrustNumber: 0,		// 委托数量
-					entrustList: [],		// 委托列表
-
-					myChart: null,
-
-				},
-				computed: {
-
-					// 总金额
-					total: function () {
-						var result = this.usable,
-							self = this;
-
-						this.business.map(function( item ){
-							if ( item.have ) {
-								result += item.price * item.number;
-							}
-						});
-						this.entrustList.map(function( item ){
-							if ( item.status ) {
-								result += item.sold.price * (item.offtake * 100);
-							}
-						});
-
-						return result.toFixed(2); 
-					},
-
-					// 持仓数量
-					existOwned: function () {
-						return this.business.filter(function( item ){
-							return item.have;
-						}).length;
-					},
-
-					// 委托数量
-					entrustOwned: function () {
-						return this.entrustList.filter(function( item ){
-							return item.status;
-						}).length;
-					},
-
-					// 交易历史
-					existHistory: function () {
-						return this.business.filter(function( item ){
-							return !item.have;
-						}).length;
-					},
-
-					// 持仓上限
-					toplimit: function () {
-						return parseInt(this.usable / (this.market.price * 100));
-					},
-
-					// 计算收益率统计
-					monthYield: function () {
-						var self = this,
-							arr = this.business.filter(function( item ){ return !item.have && item.type == 'S' }),
-							length = parseInt(arr.length / 22);
-
-						var standard = 0,
-							temp = 0,
-							sum;
-
-						var	result = {
-								dayIncomeRatio: '100%',		// 全部天数总盈利占比
-								dayRateOfReturn: '100%',	// 全部天数总收益率
-								month: [],
-								year: [],
-								standardizedrate: ''
-							};
-
-						// 年
-						for ( var i=0; i<parseInt(arr.length / (22 * 12)); i++ ) {
-							temp = 0;
-							arr.slice(i*(22*12), i*(22*12)+(22*12)).map(function( item ){
-								temp += (item.sell - item.price) / item.price * 100;
-							});
-							result.year.push((temp/22).toFixed(2) + '%');
-						}
-
-						// 月
-						for ( var i=0; i<length; i++ ) {
-							sum = 0;
-							temp=0;
-							arr.slice(i*22, i*22+22).map(function( item ){
-								sum += (item.sell - item.price ) * item.number;
-								temp += (item.sell - item.price) / item.price * 100;
-							});
-							if ( temp > 22 ) {
-								standard += 1;
-							}
-							result.month.push({
-								ratio: (temp/22).toFixed(2) + '%',
-								value: parseInt(sum)
-							});
-						}
-
-						// 日
-						var incomeTotal = 0;
-						var incomeDays = arr.filter(function( item ){
-								incomeTotal += self.getIncomeYield( item.price, item.sell, item.number/100 );
-								return item.sell > item.price;
-							}).length;
-
-						console.log(incomeTotal);
-
-						if ( this.business.length ) {
-							result.dayRateOfReturn = (incomeTotal / this.days).toFixed(2) + '%';
-						}
-						if ( arr.length ) {
-							result.dayIncomeRatio = (incomeDays / arr.length * 100).toFixed(2) + '%';
-						}
-
-						// 月标准率
-						if ( standard ) {
-							result.standardizedrate = (standard / result.month.length * 100).toFixed(2) + '%';
-						}
-
-						return result;
-					},
-
-					// 盈利和亏损总金额
-					totalProfitAndLoss: function () {
-						var self = this,
-							value = 0,
-							result = {
-								profit: 0,
-								loss: 0
-							};
-
-						this.business.map(function( item ){
-							if ( item.type == 'S' ) {
-								value = self.getIncome( item.price, item.sell, item.number/100 );
-								if ( value > 0 ) {
-									result.profit += value;
-								}
-								else {
-									result.loss += value;
-								}
-							}
-						});
-
-						return result;
-					}
+					// 委托控件数据值
+					entrustYield: 0.014,
+					entrustPrice: 0,
+					entrustNumber: 0, 
 
 				},
 				watch: {
 
-					// 监听价格变动
-					market: {
-						handler: function () {
-							var self = this;
-
-							// 处理委托
-							this.entrustList.map(function( item ){
-								if ( item.status && item.sold.days < self.days && item.price <= self.market.price ) {
-									self.sold = item.sold;
-									self.offtake = item.offtake;
-									self.setSoldEntrust(item);
-
-									item.status = false;
-								}
-							});
-						},
-						deep: true
-
-					},
-
-					// 计算日收益率
-					previous: function () {
+					// 监测价格
+					priceCurrent: function ( value ) {
 						var self = this;
-							yesterday = 0;
 
-						this.became.map(function( item ){
-							if ( item.days + 1 == self.days && yesterday == 0 ) {
-								yesterday = item.price;
-							}
+						// 委托管理
+						this.holdingRecordList.map(function( item ){
+							item.entrustLog.map(function( entrust ){
+								self.setEntrustSale(item, entrust);
+							});
 						});
-
-						this.yield = (( this.price - yesterday ) / this.price * 100).toFixed(2) + '%';
-						this.trends = Number(this.price) > Number(yesterday);
-						// this.harden = Number(this.price) > Number(this.previous);
-						// this.limit = Number(this.price) < Number(this.previous);
 					},
 
-					// 监听盈利
-					income: function () {
+					// 监听资金变更状态
+					amountIncome: function () {
 
-						// 更新当天的总金额
-						this.became[0].income = this.income;
+						// 更新当天信息
+						this.setUpdateDateInfo()
 
-						// 统计资产
-						this.updateCartogram();
+						// 更新统计图
+						this.setUpdateCartogram();
 					}
 				},
 				methods: {
+
+
+
+					/*******************************
+					*  委托类
+					**/
+
+					// 打开委托界面
+					setEntrustToggle: function ( item ) {
+						this.selectSale = null;
+
+						if ( this.selectEntrust == null ) {
+							this.selectEntrust = item;
+							this.entrustNumber = item.buyTotal;
+							this.entrustPrice = this.getSuggestedPrice(item);
+						}
+						else {
+							this.selectEntrust = null;
+						}
+					},
+
+					// 确认委托
+					setEntrust: function () {
+						var self = this;
+						var exitsEntrust = true;
+
+						this.selectEntrust.entrustLog.map(function( item ){
+							if ( item.soldPrice == self.entrustPrice && item.soldDate == self.dateLength ) {
+								item.soldQuantity += self.entrustNumber;
+								exitsEntrust = false;
+							}
+						});
+
+						if ( exitsEntrust ) {
+							this.setEntrustLog(this.selectEntrust);
+						}
+
+						this.selectEntrust.entrustTotal += this.entrustNumber;
+						this.selectEntrust = null;
+					},
+
+					// 卖出委托
+					setEntrustSale: function ( item, entrust ) {
+						if ( entrust.entrustPrice <= this.priceCurrent && entrust.entrustDate < this.dateLength ) {
+							this.setSoldPositionLog(item, entrust.entrustPrice, entrust.entrustQuantity);
+							item.entrustTotal -= entrust.entrustNumber;
+							item.entrustLog.$remove(entrust);
+						}
+					},
+
+					// 取消委托
+					setCancelEntrust: function ( item, entrust ) {
+						item.entrustTotal -= entrust.entrustQuantity;
+						item.entrustLog.$remove(entrust);
+					},
+
+					// 获取建议价
+					getSuggestedPrice: function ( item ) {
+						return Number((item.buyPrice + item.buyPrice * this.entrustYield ).toFixed(2));
+					},
+
+					// 获取建议差价点数
+					getSuggestedPoints: function ( item ) {
+						return parseInt( item.buyPrice * this.entrustYield * 100 );
+					},
+
+					// 设置建议差价点数
+					setSuggestedPoints: function ( item, value ) {
+						this.entrustPrice = (Number(item.buyPrice) + (this.getSuggestedPoints(item) * ( value || 1 ) / 100)).toFixed(2);
+					},
+
+					// 获取单笔委托的收益（不计手续费）
+					getEntrustIncome: function ( item, entrust ) {
+						return ((entrust.entrustPrice - item.buyPrice) * item.buyPrice * 100).toFixed(2);
+					},
+
+					// 获取单笔委托的收益率（不计手续费）
+					getEntrustYield: function ( item, entrust ) {
+						return ((entrust.entrustPrice - item.buyPrice) / item.buyPrice * 100).toFixed(2) + '%';
+					},
+
+					// 设置建议数量
+					setSuggestedNumber: function ( item, value ) {
+						this.entrustNumber = item.buyTotal * ( value || 1 );
+					},
+
+
+
+					/*******************************
+					*  交易类
+					**/
+
+					// 设置购买数量
+					setQuantityBuy: function ( value ) {
+						var result = parseInt(this.getAmountAvailable() / ( this.priceCurrent * 100 )) * 100 * ( value || 1 );
+
+						if ( result < 100 ) {
+							result = 100;
+						}
+
+						this.quantityBuy = result;
+					},
+
+					// 买入
+					setBuy: function(){
+						var buyAmountTotal = this.quantityBuy * this.priceCurrent;
+
+						// 确保有交易金额，并且小于等于可用金额
+						if ( buyAmountTotal > 0 && buyAmountTotal <= this.getAmountAvailable() ) {
+							var item = this.getTodayLog();
+
+							// 如果已经有仓，则加仓
+							if ( item ) {
+								item.buyTotal += this.quantityBuy;
+							}
+
+							// 负责建仓
+							else {
+								this.setTakePositionLog(this.priceCurrent, this.quantityBuy);
+							}
+
+							this.setQuantityBuy();
+						}
+					},
+
+					// 卖出界面
+					setSoldToggle: function ( item ) {
+						this.selectEntrust = null;
+
+						if ( this.selectSale == null ) {
+							this.selectSale = item;
+							this.quantitySell = item.buyTotal - item.soldTotal;
+						}
+						else {
+							this.selectSale = null;	
+						}
+					},
+
+					// 卖出
+					setSold: function () {
+						this.setSoldPositionLog(this.selectSale, this.priceCurrent, this.quantitySell);
+						this.selectSale = null;
+					},
+
+					// 賣出设置数量
+					setQuantitySale: function ( value ) {
+						this.quantitySell = (this.selectSale.buyTotal - this.selectSale.soldTotal) * ( value || 1 );
+					},
+
+					// 价格变动情况
+					getPriceChanges: function () {
+						return this.dateList.length > 0 && this.dateList[0].price > this.priceCurrent;
+					},
+
+					// 获取当前价格的收益金额（不计手续费）
+					getCurrentIncome: function ( item ) {
+						return parseInt((this.priceCurrent - item.buyPrice) * item.buyTotal);
+					},
+
+					// 获取当前价格的收益率（不计手续费）
+					getCurrentYield : function ( item ) {
+						return ((this.priceCurrent - item.buyPrice) * item.buyPrice).toFixed(2) + '%';
+					},
+
+					// 获取净收益总额（去除手续费）
+					getCleanIncome: function ( buy=1, sold=10, number=1 ) {
+						var income = (sold - buy) * number,
+							stamps = sold * number * 0.001, 
+							poundage = (Math.max(buy * 0.002, 5)) + (Math.max(buy * 0.002, 5));
+
+						return Number((income - stamps - poundage).toFixed(2));
+					},
+
+
+
+					/*******************************
+					*  日期类
+					**/
+
+					// 设置日期以及价格
+					setDateAndPrice: function () {
+						this.priceCurrent = Number(this.priceSet);
+
+						// 更新当天价格
+						if ( this.dateList.length > 0 && this.dateAdd == 0 ) {
+							this.dateList[0].price = this.priceSet;
+						}
+
+						// 更新日期并添加日期记录
+						else {
+							this.dateLength += this.dateAdd;
+							this.dateList.unshift({
+								'date'	: this.dateLength,
+								'price'	: this.priceCurrent,
+								'income': this.amountIncome
+							});
+						}
+
+						// 更新统计资产
+						this.setUpdateCartogram();
+					},
+
+					// 更新当日日期的数据
+					setUpdateDateInfo: function () {
+						var today = this.dateList[0];
+						
+						if ( today ) {
+							today.income = this.amountIncome;
+							today.price = this.priceCurrent;
+						}
+					},
+
+
+
+					/*******************************
+					*  统计类
+					**/
+
+					// 投入总金额
+					getTotalInvestmentAmount: function () {
+						var result = 0;
+
+						this.holdingRecordList.map(function( item ){
+							var soldTotal = 0;
+
+							item.soldLog.map(function( sale ){
+								soldTotal += sale.soldQuantity;
+							});
+
+							result += ( item.buyTotal - soldTotal ) * item.buyPrice;
+						});
+
+						return result;
+					},
+
+					// 获取可用金额
+					getAmountAvailable: function () {
+						return Number((this.amountTotal - this.getTotalInvestmentAmount()).toFixed(2));
+					},
+
+					// 获取每日平均收益
+					getDayRateReturn: function () {
+						var self = this,
+							result = 0;
+
+						this.holdingRecordList.map(function( item ){
+							item.soldLog.map(function( sold ){
+								result += self.getCleanIncome(item.buyPrice, sold.soldPrice, sold.soldQuantity);
+							});
+						});
+
+						return Number(( result / this.dateLength ).toFixed(2));
+					},
+
+					// 获取总获盈次数占比
+					getTotalIncomeRatio: function () {
+						var result = 1,
+							total = 1;
+
+						this.holdingRecordList.map(function( item ){
+							item.soldLog.map(function( sold ){
+								total += 1;
+								if ( sold.soldPrice > item.buyPrice ) {
+									result += 1;
+								}
+							});
+						});
+
+						return Number(( result / total * 100 ).toFixed(2));
+					},
+
+					// 显示统计图
+					setCartogram: function () {
+						var self = this;
+
+						// 基于准备好的dom，初始化echarts实例
+						this.myChart = echarts.init(document.getElementById('echartsEl'));
+
+						// window.w = $('echartsEl').width();
+						// $(window).resize(function(){
+						// 	if ( window.w + 100 < $('echartsEl').width() || window.w - 100 < $('echartsEl').width() ) {
+						// 		clearTimeout(window.c);
+						// 		window.c=setTimeout(function(){
+						// 			self.setCartogram();
+						// 			self.setUpdateCartogram();
+						// 		}, 500);
+						// 	}
+						// });
+
+						// 指定图表的配置项和数据
+						var option = {
+								title: {
+									text: ''
+								},
+								tooltip: {},
+								legend: {
+									show: false,
+									data: ['Total']
+								},
+								xAxis: {
+									data: []
+								},
+								yAxis: {},
+								series: [{
+									name: 'Total',
+									type: 'line',
+									data: []
+								}]
+							};
+
+						// 使用刚指定的配置项和数据显示图表。
+						this.myChart.setOption(option);
+					},
+
+					// 更新资产统计图
+					setUpdateCartogram: function () {
+						var keys = [1],
+							values = [0],
+							data = Object.assign([], this.dateList).reverse();
+
+						var self = this;
+
+						data.map(function( item ){
+							keys.push(item.date);
+							values.push(item.income);
+						});
+
+						this.myChart.setOption({
+							xAxis: {
+								data: keys
+							},
+							series: [{
+								name: 'Total',
+								data: values
+							}]
+						});
+					},
+
+
+
+					/*******************************
+					*  记录类
+					**/
+
+					// 查询当天是否有同价位的仓
+					getTodayLog: function () {
+						var self = this,
+							result = null;
+
+						this.holdingRecordList.map(function( item ){
+							if ( item.buyDate == self.dateLength && item.buyPrice == self.priceCurrent ) {
+								result = item;
+							}
+						});
+
+						return result;
+					},
+
+					// 设置卖出记录
+					setSoldPositionLog: function ( item, price, number ) {
+						item.soldTotal += number;
+						item.soldLog.push({
+							soldDate: this.dateLength,
+							soldPrice: price,
+							soldQuantity: number,
+						});
+
+						var income = this.getCleanIncome(item.buyPrice, price, number);
+
+						// 收益
+						this.amountTotal += income;
+						this.amountIncome += income;
+					},
+
+					// 设置委托记录
+					setEntrustLog: function ( item ) {
+						item.entrustLog.push({
+							entrustDate: this.dateLength,
+							entrustPrice: this.entrustPrice,
+							entrustQuantity: this.entrustNumber
+						});
+					},
+
+					// 设置建仓记录
+					setTakePositionLog: function ( price, number ) {
+						if ( number && price ) {
+							this.holdingRecordList.push({
+								buyDate: this.dateLength,
+								buyTotal: number,
+								buyPrice: price,
+
+								soldTotal: 0,
+								soldLog: [],
+								// soldQuantity: 0,
+								// soldDate: 0,
+								// soldPrice: 0,
+
+								entrustTotal: 0,
+								entrustLog: [],
+								// entrustQuantity: 0,
+								// entrustDate: 0,
+								// entrustPrice: 0,
+							});
+						}
+					},
+
+					// 获取全部卖出记录
+					getAllSoldLog: function () {
+						var self = this,
+							result = [];
+
+						this.holdingRecordList.map(function( item ){
+							item.soldLog.map(function( sold ){
+								result.push({
+									buyPrice: item.buyPrice,
+									soldDate: sold.soldDate,
+									soldPrice: sold.soldPrice,
+									soldQuantity: sold.soldQuantity,
+
+									soldIncome: self.getCleanIncome(item.buyPrice, sold.soldPrice, sold.soldQuantity)
+								});
+							});
+						});
+
+						return result;
+					},
+
+					// 建平仓记录
+					// setTransactionRecord: function ( type, param ) {
+					// 	this[ type == 'B' ? 'buyLogList' : 'soldLogList' ].push({
+					// 		'key'	: new Date().getTime().toString(16),
+					// 		'date'	: this.dateLength,
+					// 		'number': param.number,
+					// 		'buyPrice'	: param.buyPrice,
+					// 		'soldPrice'	: ( param.soldPrice || 0 )
+					// 	});
+					// },
+
+					// 加减仓，返回是否需要建仓或平仓
+					// setChangePosition: function ( type, param ) {
+					// 	var result = true;
+
+					// 	this[ type == 'B' ? 'buyLogList' : 'soldLogList' ].map(function( item ){
+					// 		if ( item.date == self.dateLength && item.price == param.price ) {
+					// 			item.number += param.number;
+					// 			result = false;
+					// 		}
+					// 	});
+
+					// 	return result;
+					// },
+
+					// 买入记录交易
+					// setBuyLog: function ( param ) {
+					// 	param.buyPrice = param.price;
+
+					// 	if ( this.setChangePosition( 'B', param ) ) {
+					// 		this.setTransactionRecord( 'B', param );
+					// 	}
+					// },
+
+					// 卖出记录交易
+					// setSoldLog: function ( param ) {
+					// 	param.soldPrice = param.price;
+
+					// 	if ( this.setChangePosition( 'S', param ) ) {
+					// 		this.setTransactionRecord( 'S', param );
+					// 	}
+					// },
+
+
+
+					/*******************************
+					*  公共类
+					**/
+
+					// 设置值添加
+					setValue: function ( key, value ) {
+						this[key] = Number((Number(this[key]) + value).toFixed(2));
+					},
+
+					// 设置自动值变更
+					setLastStart: function ( key, value ) {
+						var self = this;
+
+						clearTimeout(window.t);
+						window.t = setTimeout(function(){
+							self.setLastStart( key, value );
+							self.setValue( key, value );
+						}, window.t ? 150 : 500);
+					},
+
+					// 停止自动值变更
+					setLastEnd: function () {
+						clearTimeout(window.t);
+					},
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+					/*
 
 					// 买入
 					setBuy: function () {
@@ -1058,14 +1375,6 @@
 						this.entrust = null;
 					},
 
-					// 取消委托
-					setCancelEntrust: function ( item ) {
-						item.sold.number += item.offtake * 100;
-						item.sold.have = true;
-						item.offtake = 0;
-						item.status = false;
-					},
-
 					// 显示统计图
 					setCartogram: function () {
 						var self = this;
@@ -1128,14 +1437,18 @@
 								data: values
 							}]
 						});
-					}
+					}*/
 				},
 				ready: function () {
-					this.price = this.market.price;
-					this.previous = this.market.price;
+					this.amountTotal = this.initialCapital;
+
+
+				/*	this.price = this.market.price;
+					this.previous = this.market.price;*/
 
 					this.setCartogram();
-					this.updateCartogram();
+					this.setUpdateCartogram();
+
 					// this.setImitate();
 				}
 			});
