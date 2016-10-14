@@ -111,13 +111,13 @@
 					<div class="form-group">
 						<input type="text" v-model="priceSet" placeholder="price set" class="form-control" />
 						<span class="pull-right">
-							<input class="btn btn-default" type="button" value="   +   " 
-								@click="setValue('priceSet', 0.01)" 
-								@mousedown="setLastStart('priceSet', 0.01)" 
-								@mouseup="setLastEnd" />
-							<input class="btn btn-default" type="button" value="   -   " 
+							<input class="btn btn-default" type="button" value="-" style="width: 62px;"
 								@click="setValue('priceSet', -0.01)"
 								@mousedown="setLastStart('priceSet', -0.01)" 
+								@mouseup="setLastEnd" />
+							<input class="btn btn-default" type="button" value="+" style="width: 62px;" 
+								@click="setValue('priceSet', 0.01)" 
+								@mousedown="setLastStart('priceSet', 0.01)" 
 								@mouseup="setLastEnd" />
 							<input class="btn btn-default" type="submit" value="Update" />
 						</span>
