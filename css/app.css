@@ -1,0 +1,47 @@
+
+.length-of-days {
+	display: inline-block;
+}
+.length-of-days i {
+	display: inline-block;
+	width: 33px;
+	height: 33px;
+	line-height: 33px;
+	border-radius: 3px;
+	background: #aaa;
+	float: left;
+	margin: 0 10px 10px 0;
+	text-align: center;
+	color: #eee;
+	cursor: pointer;
+}
+.length-of-days i:hover {
+	background: #888;
+}
+.length-of-days i.act {
+	background: orange;
+}
+
+.form-control {
+	display: initial;
+	width: 100px;
+	height: initial;
+	/*border-radius: 0px;
+	padding: 2px 10px;*/
+}
+
+.history-list .history-item {
+	display: inline-block;
+	float: left;
+	border-radius: 3px;
+	background: #90a4ae;
+	color: white;
+	padding: 10px;
+	margin: 0 10px 10px 0;
+}
+
+.total-text { 
+	border: 0px;
+	border-bottom: 1px solid #aaa;
+	outline: none;
+}
